@@ -1,4 +1,5 @@
 # TODO: module dependencies are not expressed
+# TODO: replace mkdir calls with pre-created directories in repo?
 EXEC = datatm
 
 # Override CURDIR to reduce some of the clutter
@@ -27,12 +28,17 @@ SRCS = $(shell find $(SRC) -type f -name '*.f90')
 OBJS = $(patsubst $(SRC)%, $(OBJ)%, $(SRCS:.f90=.o))
 
 $(BIN)/$(EXEC): $(OBJS)
+	mkdir -p $(BIN)
 	$(FC) -o $@ $^ $(LD_FLAGS)
 
 $(OBJ)/datatm.o: $(SRC)/datatm.f90 $(OBJ)/coupler.o
+	mkdir -p $(INC)
+	mkdir -p $(OBJ)
 	$(FC) -c -o $@ $< $(FC_FLAGS)
 
 $(OBJ)/%.o: $(SRC)/%.f90
+	mkdir -p $(INC)
+	mkdir -p $(OBJ)
 	$(FC) -c -o $@ $< $(FC_FLAGS)
 
 clean:
