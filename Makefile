@@ -36,8 +36,12 @@ $(BIN)/$(EXEC): $(OBJS)
 $(OBJ)/%.o: $(SRC)/%.f90
 	$(FC) -c -o $@ $< $(FC_FLAGS)
 
-$(OBJ)/datatm.o: $(SRC)/datatm.f90 $(OBJ)/coupler.o $(OBJ)/mpp.o
+$(OBJ)/datatm.o: $(SRC)/datatm.f90 $(OBJ)/coupler.o $(OBJ)/mpp.o \
+				 $(OBJ)/field.o $(OBJ)/str.o
+ 
 $(OBJ)/coupler.o: $(SRC)/coupler.f90 $(OBJ)/mpp.o
+
+$(OBJ)/field.o: $(SRC)/field.f90 $(OBJ)/str.o
 
 $(OBJ) $(INC) $(BIN):
 	mkdir -p $@
