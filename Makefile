@@ -12,6 +12,8 @@ INC = $(CURDIR)/inc
 LIB = $(CURDIR)/lib
 BIN = $(CURDIR)/bin
 
+#---
+
 #OASIS_BASE = /short/v45/mxw157/MCT
 OASIS_BASE = /short/v45/mxw157/projects/xp_access
 
@@ -21,14 +23,25 @@ LD_OASIS = -L$(OASIS_BASE)/lib -lpsmile.MPI1 -lmct -lmpeu -lscrip
 LD_MPI = -L$(OPENMPI_BASE)/lib -lmpi_f90 -lmpi_f77 -lmpi
 LD_NETCDF = -L$(NETCDF_BASE)/lib -lnetcdff -lnetcdf
 
-FC = ifort
-FC_FLAGS = $(FC_OASIS) -module $(INC) -I$(INC) -g -ftrapuv
-LD_FLAGS = $(LD_NETCDF) $(LD_MPI) $(LD_OASIS) -limf -lm
+#---
 
 SRCS = $(shell find $(SRC) -type f -name '*.f90')
 OBJS = $(patsubst $(SRC)%, $(OBJ)%, $(SRCS:.f90=.o))
+HDRS = $(shell find $(SRC) -type f -name '*.h')
 
-all: $(OBJ) $(INC) $(BIN) $(BIN)/$(EXEC)
+OBJ_DIRS = $(sort $(dir $(OBJS)))
+INC_DIRS = $(sort $(dir $(HDRS))) $(INC)
+
+#---
+
+FC = ifort
+FC_FLAGS = $(FC_OASIS) $(addprefix -I, $(INC_DIRS)) \
+		   	-module $(INC) -g -ftrapuv
+LD_FLAGS = $(LD_NETCDF) $(LD_MPI) $(LD_OASIS) -limf -lm
+
+#---
+
+all: $(OBJ) $(OBJ_DIRS) $(INC) $(BIN) $(BIN)/$(EXEC)
 
 $(BIN)/$(EXEC): $(OBJS)
 	$(FC) -o $@ $^ $(LD_FLAGS)
@@ -36,12 +49,14 @@ $(BIN)/$(EXEC): $(OBJS)
 $(OBJ)/%.o: $(SRC)/%.f90
 	$(FC) -c -o $@ $< $(FC_FLAGS)
 
+#---
+
 $(OBJ)/datatm.o: $(SRC)/datatm.f90 $(OBJ)/coupler.o $(OBJ)/mpp.o \
 				 $(OBJ)/field.o $(OBJ)/str.o
  
 $(OBJ)/coupler.o: $(SRC)/coupler.f90 $(OBJ)/mpp.o
 
-$(OBJ)/field.o: $(SRC)/field.f90 $(OBJ)/str.o
+$(OBJ)/field.o: $(SRC)/field.f90 $(OBJ)/io.o
 
 $(OBJ) $(INC) $(BIN):
 	mkdir -p $@

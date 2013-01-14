@@ -1,159 +1,132 @@
 ! Forcing fields
 ! Use the module to load and access the model forcing fields
 
-! I really don't know how this ought to be set up
-
 module field_mod
+    use io_mod
     use netcdf
     implicit none
     
-    type ncvar
-        integer :: file_id      ! Netcdf file ID
-        integer :: var_id       ! Netcdf variable ID
+    
+    !--------------
+    type field_data
         
-        real, dimension(:), allocatable :: t        ! Time axis
-        integer :: nt
+        type(io_data) :: io
+        !type(oasis_data) :: cpl
         
-        real, dimension(:, :), allocatable :: val   ! Field snapshot
-        integer :: nx, ny
-    end type ncvar
+        real, dimension(:), allocatable :: time
+        real, dimension(:, :), allocatable :: val
+    end type field_data
+    
+    
+    !------------------
+    type field_manifest
+        
+        integer :: length
+        integer :: capacity
+        
+        type(field_data), dimension(:), allocatable :: f
 
+    end type field_manifest
+    
 contains
+   
+    !-------------------------------------------------------
+    subroutine field_manifest_init(manifest, initial_length)
+        
+        type(field_manifest), intent(inout) :: manifest
+        integer, intent(in), optional :: initial_length
+        
+        if (present(initial_length)) then
+            manifest%capacity = initial_length
+        else
+            manifest%capacity = 1
+        end if
+        
+        allocate(manifest%f(manifest%capacity))
+        manifest%length = 0
     
-    subroutine field_init(fname, vname, nc)
-        ! TODO: Error handling
-        !       Absence of unlimited dimension (t_dim_id == -1)
+    end subroutine field_manifest_init
+    
+    
+    !-----------------------------------------
+    subroutine field_register(manifest, field)
         
-        character(len=*), intent(in) :: fname
-        character(len=*), intent(in) :: vname
-        type(ncvar), intent(out) :: nc
+        type(field_manifest), intent(inout) :: manifest
+        type(field_data), intent(in) :: field
         
-        integer :: t_dim_id
-        integer :: t_id
+        integer :: cap_adjust
+        type(field_data), dimension(:), allocatable :: f_tmp
         
-        integer :: nc_nvars
-        integer, dimension(:), allocatable :: nc_var_ids
-        
-        integer :: var_ndims
-        integer, dimension(:), allocatable :: var_dim_ids
-        integer, dimension(:), allocatable :: var_shape
-        
-        integer, dimension(2) :: new_var_dim_ids
-        
-        integer :: ierr
-        integer :: i, j
-        integer :: test_ndims
-        integer, dimension(:), allocatable :: test_dim_ids
-        
-        ierr = nf90_open(fname, NF90_NOWRITE, nc%file_id)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        !----------
-        ! Identify the unlimited (time) variable
-        
-        ierr = nf90_inquire(nc%file_id, nVariables=nc_nvars, &
-                            unlimitedDimId=t_dim_id)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        allocate(nc_var_ids(nc_nvars))
-        
-        ierr = nf90_inq_varids(nc%file_id, nc_nvars, nc_var_ids)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        do i = 1, nc_nvars
-            ierr = nf90_inquire_variable(nc%file_id, nc_var_ids(i), &
-                                         ndims=test_ndims)
-            if (ierr /= NF90_NOERR) stop(-1)
+        if (manifest%length == manifest%capacity) then
             
-            if (test_ndims == 1) then
-                ! nf90_inquire_variable expects a vector
-                allocate(test_dim_ids(test_ndims))
-                ierr = nf90_inquire_variable(nc%file_id, nc_var_ids(i), &
-                                             dimids=test_dim_ids)
-                if (test_dim_ids(1) == t_dim_id) then
-                    t_id = nc_var_ids(i)
-                    exit
-                end if
-                deallocate(test_dim_ids)
+            ! Use the "CPython" resize formula: 
+            !   L_(n+1) <- L_n + L_n / 8 + (L_n < 9) ? 3 : 6
+            if (manifest%capacity < 9) then
+                cap_adjust = 3
+            else
+                cap_adjust = 6
             end if
-        end do
+            manifest%capacity = manifest%capacity + manifest%capacity / 8   &
+                                + cap_adjust
+            
+            allocate(f_tmp(manifest%capacity))
+            f_tmp = manifest%f
+            
+            deallocate(manifest%f)
+            allocate(manifest%f(manifest%capacity))
+            
+            manifest%f = f_tmp
+            
+            deallocate(f_tmp)
+        end if
         
-        deallocate(nc_var_ids)
-        
-        !-------
-        ! Allocate and fill the time axis
-        ! TODO: Maybe this isn't necessary
-        
-        ierr = nf90_inquire_dimension(nc%file_id, t_dim_id, len=nc%nt)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        allocate(nc%t(nc%nt))
-        
-        ierr = nf90_get_var(nc%file_id, t_id, nc%t)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        !-------
-        ! Determine field size and allocate one snapshot
-        
-        ierr = nf90_inq_varid(nc%file_id, vname, nc%var_id)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        ierr = nf90_inquire_variable(nc%file_id, nc%var_id, ndims=var_ndims)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        allocate(var_dim_ids(var_ndims))
-        ierr = nf90_inquire_variable(nc%file_id, nc%var_id, dimids=var_dim_ids)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        ! TODO: Generalise to work for any rank (currently assumes rank 2) 
-        j = 1
-        do i = 1, var_ndims
-            if (var_dim_ids(i) /= t_dim_id) then
-                new_var_dim_ids(j) = var_dim_ids(i)
-                j = j+1
-            end if
-        end do
-        deallocate(var_dim_ids)
-        
-        ierr = nf90_inquire_dimension(nc%file_id, new_var_dim_ids(1), &
-                                      len=nc%nx)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        ierr = nf90_inquire_dimension(nc%file_id, new_var_dim_ids(2), &
-                                      len=nc%ny)
-        if (ierr /= NF90_NOERR) stop(-1)
-        
-        allocate(nc%val(nc%nx, nc%ny))
+        manifest%length = manifest%length + 1
+        manifest%f(manifest%length) = field
     
+    end subroutine field_register
+    
+    
+    !--------------------------------------------
+    subroutine field_manifest_terminate(manifest)
+        
+        type(field_manifest), intent(inout) :: manifest
+        
+        integer :: i
+        
+        do i = 1, manifest%length
+            call field_terminate(manifest%f(i))
+        end do
+        
+        deallocate(manifest%f)
+    
+    end subroutine field_manifest_terminate
+    
+    
+    !----------------------------------------------
+    subroutine field_init(filename, varname, field)
+        
+        character(len=*), intent(in) :: filename
+        character(len=*), intent(in) :: varname
+        type(field_data), intent(out) :: field
+        
+        call io_open(filename, varname, field%io)
+        
+        call io_allocate_time_axis(field%io, field%time)
+        call io_allocate_field(field%io, field%val)
+        
+        ! TODO: Initialize OASIS metadata
+     
     end subroutine field_init
     
-   
-    subroutine field_update(nc, t)
-        type(ncvar), intent(inout) :: nc
-        real, intent(in) :: t
-        
-        integer :: i_t
-        integer :: ierr
-        
-        ! Find the nearest index
-        i_t = minloc(abs(nc%t - t), 1)
-        
-        ierr = nf90_get_var(nc%file_id, nc%var_id, nc%val, &
-                            start=[ 1, 1, i_t], count=[ nc%nx, nc%ny, 1])
     
-    end subroutine field_update
-
-
-    subroutine field_terminate(nc)
-        type(ncvar), intent(inout) :: nc
-        integer :: ierr
+    !--------------------------------
+    subroutine field_terminate(field)
         
-        deallocate(nc%t)
-        deallocate(nc%val)
+        type(field_data), intent(inout) :: field
         
-        ierr = nf90_close(nc%file_id)
-        if (ierr /= NF90_NOERR) stop(-1)
+        deallocate(field%time)
+        deallocate(field%val)
     
     end subroutine field_terminate
-
+    
 end module field_mod

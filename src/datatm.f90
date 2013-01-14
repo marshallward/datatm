@@ -22,13 +22,26 @@ program datatm
     integer, dimension(4), parameter :: u_cpl_shape = [ 1, 194, 1, 92 ]
     integer, parameter :: u_cpl_dtype = OASIS_Real
     
-    type(ncvar) :: u10
+    !- field.f90 test
+    type(field_manifest) :: fields
+    type(field_data) :: x
+    integer :: i
     !----------
     
     call coupler_init
     call mpp_init
     
-    call field_init('u10.cpl.nc', 'U_10', u10)
+    !- field.f90 test
+    call field_init('u10.cpl.nc', 'U_10', x)
+    
+    call field_manifest_init(fields)
+    call field_register(fields, x)
+    call field_register(fields, x)
+    call field_register(fields, x)
+    call field_register(fields, x)
+    
+    call field_manifest_terminate(fields)
+    !----
     
     ! Define fields
     ig_paral(1) = 0         ! serial

@@ -5,7 +5,7 @@ module coupler_mod
     
     integer :: oasis_comp_id
     character (len=6), parameter :: oasis_comp_name = 'datatm'
-
+ 
 contains
     
     subroutine coupler_init
