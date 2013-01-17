@@ -3,18 +3,19 @@
 
 module field_mod
     use io_mod
+    use cpl_mod
     use netcdf
     implicit none
-    
     
     !--------------
     type field_data
         
         type(io_data) :: io
-        !type(oasis_data) :: cpl
+        integer :: cpl_id
         
         real, dimension(:), allocatable :: time
         real, dimension(:, :), allocatable :: val
+    
     end type field_data
     
     
@@ -27,9 +28,9 @@ module field_mod
         type(field_data), dimension(:), allocatable :: f
 
     end type field_manifest
-    
+ 
 contains
-   
+    
     !-------------------------------------------------------
     subroutine field_manifest_init(manifest, initial_length)
         
@@ -103,18 +104,23 @@ contains
     
     
     !----------------------------------------------
-    subroutine field_init(filename, varname, field)
+    subroutine field_init(io_filename, io_var_name, cpl_var_name, &
+                          cpl_partition_id, field)
         
-        character(len=*), intent(in) :: filename
-        character(len=*), intent(in) :: varname
+        character(len=*), intent(in) :: io_filename
+        character(len=*), intent(in) :: io_var_name
+        character(len=*), intent(in) :: cpl_var_name
+        integer, intent(in) :: cpl_partition_id
         type(field_data), intent(out) :: field
         
-        call io_open(filename, varname, field%io)
+        call io_open(io_filename, io_var_name, field%io)
         
         call io_allocate_time_axis(field%io, field%time)
         call io_allocate_field(field%io, field%val)
         
         ! TODO: Initialize OASIS metadata
+        call cpl_var_init(cpl_var_name, cpl_partition_id, shape(field%val), &
+                          field%cpl_id)
      
     end subroutine field_init
     

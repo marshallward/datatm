@@ -1,5 +1,5 @@
 # NOTE: Requires all sourcecode in a single directory
-# TODO: module dependencies are not expressed
+# TODO: Write tool to generate object and module dependencies
 EXEC = datatm
 
 # Override CURDIR to reduce some of the clutter
@@ -50,13 +50,16 @@ $(OBJ)/%.o: $(SRC)/%.f90
 	$(FC) -c -o $@ $< $(FC_FLAGS)
 
 #---
+# Dependencies
 
-$(OBJ)/datatm.o: $(SRC)/datatm.f90 $(OBJ)/coupler.o $(OBJ)/mpp.o \
+$(OBJ)/datatm.o: $(SRC)/datatm.f90 $(OBJ)/cpl.o $(OBJ)/mpp.o \
 				 $(OBJ)/field.o $(OBJ)/str.o
  
-$(OBJ)/coupler.o: $(SRC)/coupler.f90 $(OBJ)/mpp.o
+$(OBJ)/cpl.o: $(SRC)/cpl.f90 $(OBJ)/mpp.o
 
 $(OBJ)/field.o: $(SRC)/field.f90 $(OBJ)/io.o
+
+#---
 
 $(OBJ) $(INC) $(BIN):
 	mkdir -p $@
