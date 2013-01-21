@@ -1,5 +1,4 @@
 module io_mod
-    ! TODO: Maybe just load all netCDF IDs at the start
 
     use netcdf
     implicit none
@@ -107,7 +106,6 @@ contains
 
     !-----------------------------------------
     subroutine io_allocate_time_axis(io, time)
-        ! TODO: Merge unlimited dim assumption with io_detect_time_axis
 
         type(io_data), intent(in) :: io
         real, dimension(:), allocatable, intent(out) :: time
@@ -181,4 +179,21 @@ contains
 
     end subroutine io_allocate_field
 
+
+    !----------------------------------------
+    subroutine io_read_field(io, t_step, val)
+
+        type(io_data), intent(in) :: io
+        integer, intent(in) :: t_step
+        real, dimension(:,:), intent(out) :: val
+
+        integer :: ierr
+
+        ierr = nf90_get_var(io%file_id, io%var_id, val, &
+                            start=[1, 1, t_step], &
+                            count=[io%n_lon, io%n_lat, 1])
+        if (ierr /= NF90_NOERR) print *, ierr
+
+    end subroutine io_read_field
+        
 end module io_mod

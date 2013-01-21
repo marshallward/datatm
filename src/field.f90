@@ -87,6 +87,36 @@ contains
     end subroutine field_register
 
 
+    !-------------------------------------------------
+    subroutine field_update_manifest(manifest, t_step)
+
+        type(field_manifest), intent(inout) :: manifest
+        integer, intent(in) :: t_step
+
+        integer :: i
+
+        do i = 1, manifest%length
+            call field_update(manifest%f(i), t_step)
+        end do
+
+    end subroutine field_update_manifest
+
+
+    !---------------------------------------
+    subroutine field_manifest_push(manifest, t)
+
+        type(field_manifest), intent(in) :: manifest
+        integer, intent(in) :: t
+
+        integer :: i
+
+        do i = 1, manifest%length
+            call field_push(manifest%f(i), t)
+        end do
+
+    end subroutine field_manifest_push
+
+
     !--------------------------------------------
     subroutine field_manifest_terminate(manifest)
 
@@ -103,7 +133,7 @@ contains
     end subroutine field_manifest_terminate
 
 
-    !----------------------------------------------
+    !--------------------------------------------------------------
     subroutine field_init(io_filename, io_var_name, cpl_var_name, &
                           cpl_partition_id, field)
 
@@ -118,11 +148,34 @@ contains
         call io_allocate_time_axis(field%io, field%time)
         call io_allocate_field(field%io, field%val)
 
-        ! TODO: Initialize OASIS metadata
         call cpl_var_init(cpl_var_name, cpl_partition_id, shape(field%val), &
                           field%cpl_id)
 
     end subroutine field_init
+
+
+    !--------------------------------
+    subroutine field_update(field, t_step)
+        type(field_data), intent(inout) :: field
+        integer, intent(in) :: t_step
+
+        ! TODO: Convert local model timestep to IO time axis step
+
+        ! Read field data from netcdf file
+        call io_read_field(field%io, t_step, field%val)
+
+    end subroutine field_update
+
+
+    !------------------------------
+    subroutine field_push(field, t)
+
+        type(field_data), intent(in) :: field
+        integer, intent(in) :: t
+
+        call cpl_push_field(field%cpl_id, field%val, t)
+
+    end subroutine field_push
 
 
     !--------------------------------

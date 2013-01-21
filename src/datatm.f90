@@ -22,7 +22,7 @@ program datatm
     type(field_data) :: v10
     !----------
 
-    integer :: nt, nt_end
+    integer :: t_step, t_end
     integer :: i
 
     !---
@@ -30,8 +30,8 @@ program datatm
     call mpp_init
 
     ! testing
-    nt_end = 2
-    call cpl_partition_init('serial', 194*92, p_serial)
+    t_end = 2
+    call cpl_partition_init('serial', 192*94, p_serial)
 
     call field_init('u10.cpl.nc', 'U_10', 'U_10WIND', p_serial, u10)
     call field_init('v10.cpl.nc', 'V_10', 'V_10WIND', p_serial, v10)
@@ -43,14 +43,18 @@ program datatm
 
     call cpl_init_finalize
 
+    ! For now, assume all fields are on the same time axis
+    ! TODO: Collate time axis from all fields and construct a "master" time axis
+
     !---
     ! Model loop here
-    do nt = 1, nt_end
+    do t_step = 1, t_end
 
-        ! put/get calls here?
-        do i = 1, fields%length
-            print *, i, shape(fields%f(i)%val)
-        end do
+        ! Need to convert t_step to a physical time (in seconds)
+
+        ! Update manifest fields
+        call field_update_manifest(fields, t_step)
+        call field_manifest_push(fields, t_step)
 
     end do
 

@@ -6,15 +6,6 @@ module cpl_mod
     integer :: oasis_comp_id
     character (len=6), parameter :: oasis_comp_name = 'datatm'
 
-    !------------
-    type cpl_data
-        ! Do I need this?
-
-        integer :: var_id
-        integer :: partition_id
-
-    end type cpl_data
-
 contains
 
     !------------------
@@ -133,6 +124,7 @@ contains
     end subroutine cpl_var_init
 
 
+    !---------------------------
     subroutine cpl_init_finalize
 
         integer :: ierr
@@ -144,6 +136,24 @@ contains
         end if
 
     end subroutine cpl_init_finalize
+
+
+    !-------------------------------
+    subroutine cpl_push_field(cpl_id, field_val, t)
+
+        integer, intent(in) :: cpl_id
+        real, dimension(:,:), intent(in) :: field_val
+        integer, intent(in) :: t
+
+        integer :: ierr
+        character(len=*), parameter :: method_name = 'cpl_send_field'
+
+        call oasis_put(cpl_id, t, field_val, ierr)
+        if (ierr /= OASIS_Ok) then
+            call oasis_abort(oasis_comp_id, method_name, 'put oops')
+        end if
+
+    end subroutine cpl_push_field
 
 
     !------------------
