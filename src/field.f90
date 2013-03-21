@@ -88,7 +88,7 @@ contains
 
 
     !-------------------------------------------------
-    subroutine field_update_manifest(manifest, t_step)
+    subroutine field_manifest_update(manifest, t_step)
 
         type(field_manifest), intent(inout) :: manifest
         integer, intent(in) :: t_step
@@ -99,19 +99,19 @@ contains
             call field_update(manifest%f(i), t_step)
         end do
 
-    end subroutine field_update_manifest
+    end subroutine field_manifest_update
 
 
-    !---------------------------------------
-    subroutine field_manifest_push(manifest, t)
+    !-----------------------------------------------
+    subroutine field_manifest_push(manifest, t_step)
 
         type(field_manifest), intent(in) :: manifest
-        integer, intent(in) :: t
+        integer, intent(in) :: t_step
 
         integer :: i
 
         do i = 1, manifest%length
-            call field_push(manifest%f(i), t)
+            call field_push(manifest%f(i), t_step)
         end do
 
     end subroutine field_manifest_push
